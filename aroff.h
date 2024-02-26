@@ -15,6 +15,7 @@ enum {
 	ATTR_SUPERSCRIPT = 4,
 	ATTR_SUBSCRIPT = 8,
 	ATTR_ITALIC = 16,
+	ATTR_REVERSE = 32,
 };
 
 extern unsigned aroff_indent[2];

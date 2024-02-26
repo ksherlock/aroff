@@ -118,7 +118,25 @@ static void aw_text(FILE *f, int arg) {
 
 	for (i = 0; i < l; ++i) {
 		unsigned c = buffer[i];
-		if (c > 0x7f) c = '?'; /* mouse text? */
+		if (c > 0x7f) {
+			if (c >= 0xe0) {
+				/* inverse lower case */
+				c = 0x60 | (c & 0x1f);
+			} else if (c >= 0xc0) {
+				/* mouse text */
+				c = '?';
+			} else if (c >= 0xa0) {
+				/* inverse number/symbols */
+				c = 0x20 | (c & 0x1f);
+			} else if (c >= 0x80) {
+				/* inverse number/symbols */
+				c = 0x40 | (c & 0x1f);
+			}
+			para[pos] = c;
+			style[pos] = ATTR_REVERSE;	
+			++pos;
+			continue;
+		}
 		if (c >= 0x20) {
 			para[pos] = c;
 			style[pos] = attr;

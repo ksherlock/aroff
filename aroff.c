@@ -43,12 +43,15 @@ static unsigned flip_flop = 0;
 int flag_c;
 int flag_f;
 
-static char *bold_begin = NULL;
-static char *bold_end = NULL;
-static char *italic_begin = NULL;
-static char *italic_end = NULL;
-static char *underline_begin = NULL;
-static char *underline_end = NULL;
+static char *tc_se = NULL;
+static char *tc_so = NULL;
+static char *tc_ue = NULL;
+static char *tc_us = NULL;
+static char *tc_ZH = NULL;
+static char *tc_ZR = NULL;
+static char *tc_md = NULL;
+static char *tc_mr = NULL;
+static char *tc_me = NULL;
 
 static char tcap_buffer[1024];
 static unsigned tcap_buffer_offset = 0;
@@ -80,83 +83,70 @@ void tc_init(void) {
 	tcap_buffer_offset = 0;
 
 	pcap = buffer2;
-	if (1) {
-		/* ZH/ZR are italic begin/end.  Not usually supported. */
 
-		cp = tgetstr("ZH", &pcap);
-		if (cp) {
-			italic_begin = tcap_buffer + tcap_buffer_offset;
-			tputs(cp, 0, tputs_helper);
-			tcap_buffer[tcap_buffer_offset++] = 0;
-		}
-		cp = tgetstr("ZR", &pcap);
-		if (cp) {
-			italic_end = tcap_buffer + tcap_buffer_offset;
-			tputs(cp, 0, tputs_helper);
-			tcap_buffer[tcap_buffer_offset++] = 0;
-		}
-
-		if (!italic_begin) {
-			cp = tgetstr("us", &pcap);
-			if (cp) {
-				italic_begin = tcap_buffer + tcap_buffer_offset;
-				tputs(cp, 0, tputs_helper);
-				tcap_buffer[tcap_buffer_offset++] = 0;
-			}
-			cp = tgetstr("ue", &pcap);
-			if (cp) {
-				italic_end = tcap_buffer + tcap_buffer_offset;
-				tputs(cp, 0, tputs_helper);
-				tcap_buffer[tcap_buffer_offset++] = 0;
-			}
-		}
+	/* ZH/ZR are italic begin/end.  Not usually supported. */
+	cp = tgetstr("ZH", &pcap);
+	if (cp) {
+		tc_ZH = tcap_buffer + tcap_buffer_offset;
+		tputs(cp, 0, tputs_helper);
+		tcap_buffer[tcap_buffer_offset++] = 0;
 	}
 
-	if (1) {
-		cp = tgetstr("md", &pcap);
-		if (cp) {
-			bold_begin = tcap_buffer + tcap_buffer_offset;
-			tputs(cp, 0, tputs_helper);
-			tcap_buffer[tcap_buffer_offset++] = 0;
-		}
-		/* TODO -- me, if present, turns off *all* appearance modes */
-		cp = tgetstr("me", &pcap);
-		if (cp) {
-			bold_end = tcap_buffer + tcap_buffer_offset;
-			tputs(cp, 0, tputs_helper);
-			tcap_buffer[tcap_buffer_offset++] = 0;
-		}
-		if (!bold_begin) {
-			cp = tgetstr("so", &pcap);
-			if (cp) {
-				bold_begin = tcap_buffer + tcap_buffer_offset;
-				tputs(cp, 0, tputs_helper);
-				tcap_buffer[tcap_buffer_offset++] = 0;
-			}
-			cp = tgetstr("se", &pcap);
-			if (cp) {
-				bold_end = tcap_buffer + tcap_buffer_offset;
-				tputs(cp, 0, tputs_helper);
-				tcap_buffer[tcap_buffer_offset++] = 0;
-			}
-		}
+	cp = tgetstr("ZR", &pcap);
+	if (cp) {
+		tc_ZR = tcap_buffer + tcap_buffer_offset;
+		tputs(cp, 0, tputs_helper);
+		tcap_buffer[tcap_buffer_offset++] = 0;
 	}
 
-	if (1) {
-		/* underlining */
-		cp = tgetstr("us", &pcap);
-		if (cp) {
-			underline_begin = tcap_buffer + tcap_buffer_offset;
-			tputs(cp, 0, tputs_helper);
-			tcap_buffer[tcap_buffer_offset++] = 0;
-		}
-		cp = tgetstr("ue", &pcap);
-		if (cp) {
-			underline_end = tcap_buffer + tcap_buffer_offset;
-			tputs(cp, 0, tputs_helper);
-			tcap_buffer[tcap_buffer_offset++] = 0;
-		}
+	cp = tgetstr("md", &pcap);
+	if (cp) {
+		tc_md = tcap_buffer + tcap_buffer_offset;
+		tputs(cp, 0, tputs_helper);
+		tcap_buffer[tcap_buffer_offset++] = 0;
+	}
 
+	cp = tgetstr("mr", &pcap);
+	if (cp) {
+		tc_mr = tcap_buffer + tcap_buffer_offset;
+		tputs(cp, 0, tputs_helper);
+		tcap_buffer[tcap_buffer_offset++] = 0;
+	}
+
+	cp = tgetstr("me", &pcap);
+	if (cp) {
+		tc_me = tcap_buffer + tcap_buffer_offset;
+		tputs(cp, 0, tputs_helper);
+		tcap_buffer[tcap_buffer_offset++] = 0;
+	}
+
+	cp = tgetstr("so", &pcap);
+	if (cp) {
+		tc_so = tcap_buffer + tcap_buffer_offset;
+		tputs(cp, 0, tputs_helper);
+		tcap_buffer[tcap_buffer_offset++] = 0;
+	}
+
+	cp = tgetstr("se", &pcap);
+	if (cp) {
+		tc_se = tcap_buffer + tcap_buffer_offset;
+		tputs(cp, 0, tputs_helper);
+		tcap_buffer[tcap_buffer_offset++] = 0;
+	}
+
+	/* underlining */
+	cp = tgetstr("us", &pcap);
+	if (cp) {
+		tc_us = tcap_buffer + tcap_buffer_offset;
+		tputs(cp, 0, tputs_helper);
+		tcap_buffer[tcap_buffer_offset++] = 0;
+	}
+
+	cp = tgetstr("ue", &pcap);
+	if (cp) {
+		tc_ue = tcap_buffer + tcap_buffer_offset;
+		tputs(cp, 0, tputs_helper);
+		tcap_buffer[tcap_buffer_offset++] = 0;
 	}
 
 }
@@ -176,15 +166,24 @@ void aroff_init(void) {
 
 /* on some termcaps, eg, vt100, underline end, bold end, etc disable all attr */
 void tc_disable(unsigned attr) {
-	if ((attr & ATTR_BOLD) && bold_end) fputs(bold_end, stdout);
-	if ((attr & ATTR_UNDERLINE) && underline_end) fputs(underline_end, stdout);
-	if ((attr & ATTR_ITALIC) && italic_end) fputs(italic_end, stdout);
+	if (tc_me) {
+		/* me disables *all* appearance modes */
+		fputs(tc_me, stdout);
+		return;
+	}
+	if ((attr & ATTR_BOLD) && tc_se) fputs(tc_se, stdout);
+	if ((attr & ATTR_UNDERLINE) && tc_ue) fputs(tc_ue, stdout);
+	if ((attr & ATTR_ITALIC) && tc_ZR) fputs(tc_ZR, stdout);
 }
 
 void tc_enable(unsigned attr) {
-	if ((attr & ATTR_BOLD) && bold_begin) fputs(bold_begin, stdout);
-	if ((attr & ATTR_UNDERLINE) && underline_begin) fputs(underline_begin, stdout);
-	if ((attr & ATTR_ITALIC) && italic_begin) fputs(italic_begin, stdout);
+	if (attr & ATTR_BOLD) {
+		if (tc_md) fputs(tc_md, stdout);
+		else if (tc_so) fputs(tc_so, stdout);
+	}
+	if ((attr & ATTR_UNDERLINE) && tc_us) fputs(tc_us, stdout);
+	if ((attr & ATTR_ITALIC) && tc_ZH) fputs(tc_ZH, stdout);
+	if ((attr & ATTR_REVERSE) && tc_mr) fputs(tc_mr, stdout);
 }
 
 
@@ -194,7 +193,7 @@ void aroff_render(unsigned char *text, unsigned char *style, unsigned length) {
 	unsigned attr = 0;
 	for (unsigned i = 0; i < length; ++i) {
 		attr |= style[i];
-		text[i] &= 0x7f; // sticky space
+		text[i] &= 0x7f; /* sticky space */
 	}
 	if (!attr) {
 		fwrite(text, length, 1, stdout);
@@ -205,7 +204,7 @@ void aroff_render(unsigned char *text, unsigned char *style, unsigned length) {
 
 		char c = text[i];
 		unsigned a = style[i];
-		if (c == ' ') a = 0;
+		// if (c == ' ') a = 0;
 		if (attr != a) {
 			if (attr) tc_disable(attr);
 			if (a) tc_enable(a);
