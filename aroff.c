@@ -189,7 +189,6 @@ void tc_enable(unsigned attr) {
 
 void aroff_render(unsigned char *text, unsigned char *style, unsigned length) {
 
-	/* TODO */
 	unsigned attr = 0;
 	for (unsigned i = 0; i < length; ++i) {
 		attr |= style[i];
@@ -205,6 +204,10 @@ void aroff_render(unsigned char *text, unsigned char *style, unsigned length) {
 		char c = text[i];
 		unsigned a = style[i];
 		// if (c == ' ') a = 0;
+		if (c == '\t') {
+			c = ' ';
+			a = 0;
+		}
 		if (attr != a) {
 			if (attr) tc_disable(attr);
 			if (a) tc_enable(a);
@@ -344,21 +347,22 @@ void aroff_flush_paragraph(int cr) {
 	unsigned tlen = pos;
 	while (tlen >= w) {
 
-		int ws;
-		ws = start + w;
-		while (ws >= start) {
-			if (para[ws] == ' ') break;
-			--ws;
+		int bk = start + w;
+		while (bk >= start) {
+			unsigned c = para[bk];
+			if (c == ' ' || c == '-' || c == '/') break;
+			--bk;
 		}
-		if (ws < start) {
+		if (bk < start) {
 			// no whitespace so just break
-			end = ws = start + w;
+			end = bk = start + w;
 		} else {
-			end = ws + 1;
-			while (ws > start && para[ws-1] == ' ') --ws;
+			++bk;
+			end = bk;
+			while (bk > start && para[bk-1] == ' ') --bk;
 		}
 
-		print_helper(start, ws, 0);
+		print_helper(start, bk, 0);
 		start = end;
 
 		/* trim leading whitespace on the next line... */

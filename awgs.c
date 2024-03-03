@@ -340,6 +340,12 @@ void awgs_process(FILE *f) {
 		unsigned t = READ16(arrays, offset + o_sa_text_block);
 		unsigned r = READ16(arrays, offset + o_sa_ruler_num);
 
+		/* check for a page break */
+		if (READ16(arrays, offset + o_sa_attributes)) {
+			fputc('\f', stdout);
+			continue;
+		}
+
 		// fprintf(stderr, "%d: %d:%d %d\n", i, t, o, r);
 		process_para(rulers + r * o_ruler_size, textBlocks[t] + o);
 	}

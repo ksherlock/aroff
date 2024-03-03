@@ -416,15 +416,19 @@ void aw_process(FILE *f) {
 			break;
 		case 0xf4: /* page break (arg = page #) */
 			SHOW_CODE("Page Break: %u\n", arg);
+			fputc('\f', stdout);
 			break;
 		case 0xf5: /* page break (arg + 256 = page #) */
 			SHOW_CODE("Page Break: %u\n", arg+256);
+			fputc('\f', stdout);
 			break;
 		case 0xf6: /* page break arg (middle of paragraph)*/
 			SHOW_CODE("Page Break: %u\n", 256);
+			fputc('\f', stdout);
 			break;
 		case 0xf7: /* page break arg+256 (middle of paragraph)*/
 			SHOW_CODE("Page Break: %u\n", arg+256);
+			fputc('\f', stdout);
 			break;
 		}
 	}
