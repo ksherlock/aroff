@@ -114,7 +114,7 @@ static void aw_text(FILE *f, int arg) {
 		return;
 	}
 
-	if (pos + l >= sizeof(para)) aroff_flush_paragraph(0);
+	if (pos + l >= AROFF_BUFFER_SIZE) aroff_flush_paragraph(0);
 
 	for (i = 0; i < l; ++i) {
 		unsigned c = buffer[i];

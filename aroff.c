@@ -27,7 +27,8 @@ char *months[12] = {
 	"December"
 };
 
-
+#undef MIN
+#define MIN(a, b) ( ( (a) < (b) ) ? (a) : (b) )
 
 unsigned aroff_indent[2] = { 1, 1 };
 unsigned aroff_width[2] = { 78, 78 };
@@ -162,6 +163,8 @@ void aroff_init(void) {
 	aroff_line = 0;
 	flip_flop = 0;
 	just = JUST_LEFT;
+
+	tab_count = 0;
 }
 
 /* on some termcaps, eg, vt100, underline end, bold end, etc disable all attr */
@@ -219,11 +222,66 @@ void aroff_render(unsigned char *text, unsigned char *style, unsigned length) {
 }
 
 
+static unsigned char ftext[132];
+static unsigned char fstyle[132];
+
+
+static unsigned full_justify_chunk(unsigned start, unsigned end, unsigned width) {
+
+	unsigned i, j;
+	unsigned padding, sp;
+
+	unsigned sz = end - start;
+
+
+	if (sz >= width) {
+		aroff_render(para + start, style + start, sz);
+		return sz;
+	}
+
+	for (sp = 0, i = start; i < end; ++i) {
+		if (para[i] == ' ') ++sp;
+	}
+
+	if (sp == 0) {
+		aroff_render(para + start, style + start, sz);
+		return sz;
+	}
+
+	padding = width - sz;
+
+	for (i = start, j = 0; i < end; ++i) {
+		unsigned c = para[i];
+		unsigned s = style[i];
+
+		ftext[j] = c;
+		fstyle[j] = s;
+		++j;
+
+		if (c == ' ' && padding) {
+			unsigned fudge;
+			if (flip_flop)
+				fudge = padding / sp;
+			else
+				fudge = (padding - 1) / sp + 1;
+			padding -= fudge;
+			sp -= 1;
+			for (unsigned k = 0; k < fudge; ++k) {
+				ftext[j] = ' ';
+				fstyle[j] = s;
+				++j;
+			}
+		}
+	}
+
+	aroff_render(ftext, fstyle, width);
+	flip_flop = !flip_flop;
+	return width;
+}
 
 static void full_justify(unsigned start, unsigned end) {
 
-	static unsigned char ftext[132];
-	static unsigned char fstyle[132];
+
 
 	unsigned i, j;
 	unsigned padding, sp;
@@ -314,15 +372,230 @@ static void print_helper(unsigned start, unsigned end, int last) {
 	if (just == JUST_FULL && !last && sz < w) {
 		full_justify(start, end);
 	} else {
-		/* TODO -- handle attribute printing */
 		aroff_render(para + start, style + start, sz);
 	}
 
 	fputc('\n', stdout);
-	aroff_line = 1;
+	// aroff_line = 1;
+}
+
+unsigned tab_count = 0;
+unsigned tab_stops[AROFF_MAX_TABS];
+unsigned tab_types[AROFF_MAX_TABS];
+
+static int next_tab(unsigned x, unsigned *style) {
+	for (unsigned i = 0; i < tab_count; ++i) {
+		if (tab_stops[i] > x) {
+			if (style) *style = tab_types[i];
+			return tab_stops[i];
+		}
+	}
+	return -1;
+}
+
+static int find_break(unsigned start, unsigned end, unsigned *termchar) {
+
+	int rv = -1;
+	unsigned c = 0;
+	for (unsigned i = start; i < end; ++i) {
+		c = para[i];
+		if (c == '\t') {
+			rv = i;
+			break;
+		}
+		if (c == '-' || c == ' ') rv = i;
+	}
+
+	if (rv >= 0) *termchar = para[c];
+	if (rv < 0 && para[end] == ' ') {
+		*termchar = 0;
+		rv = end - 1;
+	}
+	return rv;
+}
+
+/* returns *offset* to dot. */
+static int dot_offset(unsigned start, unsigned end) {
+	for (unsigned i = start; i < end; ++i) {
+		unsigned c = para[i];
+		if (c == '.') return i - start;
+		if (c == '\t') break;
+	}
+	return -1;
 }
 
 
+/* returns new end */
+static unsigned one_line(unsigned start, unsigned end, int last) {
+
+	unsigned w = aroff_width[aroff_line];
+	if ((int)w < MIN_WIDTH) w = MIN_WIDTH;
+	int bk;
+	unsigned c;
+
+
+	bk = find_break(start, end, &c);
+	if (bk < 0) {
+		/* no break. */
+		print_helper(start, end, last);
+		return end;
+	}
+
+	/* strip trailing whitespace */
+	unsigned local_end;
+	local_end = bk;
+	if (c == ' ') while (local_end > start && para[local_end - 1] == ' ') --local_end;
+	if (local_end == start) {
+		/* whitespace line? */
+		return bk;
+	}
+
+	if (c != '\t') {
+		/* simple case - no tabs! */
+		print_helper(start, local_end, last);
+		return bk;
+	}
+
+	/* complex case - tabs */
+	/* n.b. - indent is handled as if it were a tab */
+	unsigned tab_stop = aroff_indent[aroff_line];
+	unsigned tab_style = TAB_LEFT;
+
+	unsigned x = 0;
+	unsigned max_x = w + tab_stop;
+
+	for(;;) {
+
+		unsigned l = local_end - start;
+
+		unsigned ws = tab_stop - x;
+
+		switch(tab_style) {
+		case TAB_LEFT:
+		case TAB_DECIMAL:
+			/* TAB_DECIMAL handled below */
+			break;
+		case TAB_RIGHT:
+			ws -= l;
+			break;
+		case TAB_CENTER:
+			ws -= (l >> 1);
+			break;
+		}
+
+		if ((int)ws > 0) {
+			for (unsigned i = 0; i < ws; ++i)
+				fputc(' ', stdout);
+			x += ws;
+		}
+
+		/* TODO -- if this is the final component
+		and just == JUST_FULL, justify the text.
+		exceptions:
+			this is the last line (last is true and no more text)
+		*/
+
+		/* text edit algo seems to be - layout as if left-justified
+		(to find next tab break) then justify.
+		*/
+
+
+		/*
+			if this is the final component and fully justified,
+			we need to fully justify it ...
+		*/
+		if (just == JUST_FULL && tab_style == TAB_LEFT) {
+
+			int rm = (c != '\t' || next_tab(x + l, NULL) < 0);
+			if (last && bk == end) rm = 0;
+
+			if (rm) {
+				full_justify_chunk(start, bk, w - tab_stop);
+				fputc('\n', stdout);
+				return bk;
+			}
+		}
+
+		aroff_render(para + start, style + start, l);
+		x += l;
+
+		if (c != '\t') {
+			fputc('\n', stdout);
+			return bk;
+		}
+
+		/* reminder: para[bk] is a tab */
+		tab_stop = next_tab(x, &tab_style);
+		if ((int)tab_stop < 0 || tab_stop > max_x) {
+			fputc('\n', stdout);
+			return bk;
+		}
+
+		/* skip over the tab */
+		start = bk + 1;
+		if (start == end) {
+			fputc('\n', stdout);
+			return end;
+		}
+
+		unsigned max_width = 0;
+		switch(tab_style) {
+		case TAB_LEFT:
+			max_width = max_x - tab_stop;
+			break;
+		case TAB_RIGHT:
+			max_width = max_x - x;
+			break;
+		case TAB_CENTER: {
+				unsigned a = max_x - tab_stop;
+				unsigned b = tab_stop - x;
+				max_width = MIN(a, b);
+				max_width <<= 1;
+				break;
+			}
+		case TAB_DECIMAL: {
+				unsigned a = start + (tab_stop - x);
+				unsigned b = end;
+				int d = dot_offset(start, MIN(a, b));
+				if (d < 0) {
+					tab_style = TAB_RIGHT;
+					max_width = max_x - x;
+				} else {
+					tab_style = TAB_LEFT;
+					tab_stop -= d;
+					max_width = max_x - tab_stop;
+				}
+				break;
+			}
+		}
+
+		if ((int)max_width <= 0) {
+			fputc('\n', stdout);
+			return start;
+		}
+
+		unsigned local_end = start + max_width;
+		if (local_end > end) local_end = end;
+		bk = find_break(start, local_end, &c);
+
+		/* if no break was found, end this line and push
+		it to the next. 
+		*/
+
+		if (bk < 0) {
+			fputc('\n', stdout);
+			return start;
+		}
+
+		/* strip trailing whitespace */
+		local_end = bk;
+		if (c == ' ') while (local_end > start && para[local_end - 1] == ' ') --local_end;
+		if (local_end == start) {
+			fputc('\n', stdout);
+			return bk;
+		}
+	}
+}
 
 void aroff_flush_paragraph(int cr) {
 
@@ -332,70 +605,81 @@ void aroff_flush_paragraph(int cr) {
 	*/
 
 	int start = 0;
-	int end = 0;
 	unsigned w = aroff_width[aroff_line];
 	if ((int)w < MIN_WIDTH) w = MIN_WIDTH;
 
-	if (pos == 0 && cr) {
-		fputc('\n', stdout);
-		return;
+
+	if (cr) {
+		/* remove trailing space (and sticky space) */
+		while (pos > 0 && (para[pos-1] & 0x7f) == ' ') --pos;
+
+		if (pos == 0) {
+			fputc('\n', stdout);
+			return;			
+		}
 	}
+	/* secretly append a space so find_break can peek ahead. */
+	para[pos] = ' ';
 
 	if (pos < w && !cr) return;
 
+	unsigned remaining = pos;
 
-	unsigned tlen = pos;
-	while (tlen >= w) {
-
-		int bk = start + w;
-		while (bk >= start) {
-			unsigned c = para[bk];
-			if (c == ' ' || c == '-' || c == '/') break;
-			--bk;
+	while (remaining >= w) {
+		int sz = one_line(start, start + w, 0);
+		if (sz < 0) break;
+		start = sz;
+		remaining = pos - sz;
+		/* trim leading whitespace...*/
+		while (remaining > 0 && para[start] == ' ') {
+			--remaining;
+			++start;
 		}
-		if (bk < start) {
-			// no whitespace so just break
-			end = bk = start + w;
-		} else {
-			++bk;
-			end = bk;
-			while (bk > start && para[bk-1] == ' ') --bk;
-		}
-
-		print_helper(start, bk, 0);
-		start = end;
-
-		/* trim leading whitespace on the next line... */
-		while (start < pos && para[start] == ' ') ++start;
-
-		tlen = pos - start;
-		w = aroff_width[aroff_line];
+		aroff_line = 1;
+		w = aroff_width[1];
 		if ((int)w < MIN_WIDTH) w = MIN_WIDTH;
 	}
 
-	/* move line / style, update pos. */
-	if (tlen != pos) {
-		memmove(para, para + start, tlen);
-		memmove(style, style + start, tlen);
-		pos = tlen;
+	if (remaining && start) {
+		memmove(para, para + start, remaining);
+		memmove(style, style + start, remaining);
+		pos = remaining;
 	}
 
-	if (cr) {
-		/* trim trailing whitespace (or sticky space)... */
-		while (pos && (para[pos-1]& 0x7f) == ' ') --pos;
 
-		if (pos)
-			print_helper(0, pos, 1);
-		else fputc('\n', stdout);
-		pos = 0;
-		aroff_line = 0;
+	if (!cr) return;
+
+
+
+	/* insert a terminal space so find_break will match it. */
+	para[pos] = ' ';
+	style[pos] = 0;
+	++pos;
+	remaining = pos;
+	start = 0;
+	while (remaining > 0) {
+		int sz = one_line(start, pos, 1);
+		if (sz <= 0) break;
+		start = sz;
+		remaining = pos - sz;
+
+		/* trim leading whitespace...*/
+		while (remaining > 0 && para[start] == ' ') {
+			--remaining;
+			++start;
+		}
+		aroff_line = 1;
 	}
+
+	aroff_line = 0;
+	pos = 0;
 }
+
 
 void aroff_append_string(const char *str, unsigned attr) {
 	unsigned i,l;
 	l = strlen(str);
-	if (pos + l > 512) aroff_flush_paragraph(0);
+	if (pos + l >= AROFF_BUFFER_SIZE) aroff_flush_paragraph(0);
 	memcpy(para + pos, str, l);
 	for (i = 0; i < l; ++i)
 		style[pos++] = attr;

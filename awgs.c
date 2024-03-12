@@ -144,10 +144,6 @@ void process_para(unsigned char *ruler, unsigned char *pp) {
 
 	unsigned x;
 	unsigned left_margin, indent_margin, right_margin;
-	unsigned nt;
-
-	unsigned tabs[10];
-	unsigned tab_type[10];
 
 	/* status bits */
 	x = ruler[o_ruler_status_bits];
@@ -172,14 +168,17 @@ void process_para(unsigned char *ruler, unsigned char *pp) {
 	aroff_indent[1] = left_margin;
 	aroff_width[1] = right_margin - left_margin;
 
-	nt = READ16(ruler, o_ruler_num_tabs);
-	if (nt > 10) nt = 10;
+	tab_count = READ16(ruler, o_ruler_num_tabs);
+	if (tab_count > AROFF_MAX_TABS) tab_count = AROFF_MAX_TABS;
 
-	for (unsigned i = 0, offset = o_ruler_tabs; i < nt; ++i, offset += o_tab_size) {
+	for (unsigned i = 0, offset = o_ruler_tabs; i < tab_count; ++i, offset += o_tab_size) {
 
 		x = READ16(ruler, offset + o_tab_location) + 40;
-		tabs[i] = x >> 3;
-		tab_type[i] = READ16(ruler, offset + o_tab_type);
+		tab_stops[i] = x >> 3;
+		x = READ16(ruler, offset + o_tab_type);
+		tab_types[i] = TAB_LEFT;
+		if (x == 1) tab_types[i] = TAB_RIGHT;
+		if (x == -1) tab_types[i] = TAB_DECIMAL;
 	}
 
 	/* TODO --
@@ -228,30 +227,13 @@ void process_para(unsigned char *ruler, unsigned char *pp) {
 				break;
 			case 0x09:
 				/* tab char.... */
-				/* flush any pending data, then calculate the next tab */
-				aroff_flush_paragraph(0);
-				para[pos] = ' ';
+				/* for left/center justification, AWGS treats a tab as a space */
+				if (just == JUST_CENTER || just == JUST_RIGHT)
+					c = ' ';
+				para[pos] = c;
 				style[pos] = attr;
 				++pos;
-
-				/* based on testing, center and right justified just insert a space */
-				if (just == JUST_CENTER || just == JUST_RIGHT)
-					break;
-
-				if (just != JUST_LEFT) just = JUST_LEFT;
-				for (unsigned i = 0; i < nt; ++i) {
-					/* tab location is pixels from the left */
-
-					x = tabs[i] - aroff_indent[aroff_line];
-					if (x >= pos) {
-						while(pos < x) {
-							para[pos] = ' ';
-							style[pos] = attr;
-							++pos;
-						}
-						break;
-					}
-				}
+				if (pos == AROFF_BUFFER_SIZE) aroff_flush_paragraph(0);
 				break;
 			}
 		} else {
@@ -263,7 +245,7 @@ void process_para(unsigned char *ruler, unsigned char *pp) {
 			para[pos] = c;
 			style[pos] = attr;
 			++pos;
-			if (pos == 512) aroff_flush_paragraph(0);
+			if (pos == AROFF_BUFFER_SIZE) aroff_flush_paragraph(0);
 		}
 	}
 	aroff_flush_paragraph(1);
