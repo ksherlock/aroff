@@ -181,15 +181,6 @@ void process_para(unsigned char *ruler, unsigned char *pp) {
 		if (x == -1) tab_types[i] = TAB_DECIMAL;
 	}
 
-	/* TODO --
-		stty.1 awgs man page uses full justification and tabs.
-		disable full/center justification if tabs are used?
-
-		stty.1 awgs man pages uses a left tab on the right edge
-		of the document.
-
-	*/
-
 	update_style(pp[o_ph_first_style]);
 	pp += o_ph_size;
 	for (unsigned i = 0;;) {
@@ -315,7 +306,6 @@ void awgs_process(FILE *f) {
 			errx(EX_DATAERR, "fread");
 		textBlocks[i] = cp;
 	}
-
 
 	for (i = 0, offset = 0; i < numArrays; ++i, offset += o_sa_size) {
 		unsigned o = READ16(arrays, offset + o_sa_offset);

@@ -75,7 +75,37 @@ void aw_init(void) {
 
 }
 
-
+static void process_tabs(unsigned char *buffer, unsigned length) {
+	unsigned j = 0;
+	for (unsigned i = 0, j = 0; i < length; ++i) {
+		unsigned c = buffer[i];
+		switch(c) {
+		case '<':
+		case '|': /* aw 2.0 */
+			tab_stops[j] = i;
+			tab_types[j] = TAB_LEFT;
+			++j;
+			break;
+		case '>':
+			tab_stops[j] = i;
+			tab_types[j] = TAB_RIGHT;
+			++j;
+			break;
+		case '^':
+			tab_stops[j] = i;
+			tab_types[j] = TAB_CENTER;
+			++j;
+			break;
+		case '.':
+			tab_stops[j] = i;
+			tab_types[j] = TAB_DECIMAL;
+			++j;
+			break;
+		}
+		if (j == AROFF_MAX_TABS) break;
+	}
+	tab_count = j;
+}
 
 static void aw_text(FILE *f, int arg) {
 
@@ -111,6 +141,9 @@ static void aw_text(FILE *f, int arg) {
 			fwrite(buffer, 1, l, stdout);
 			fputc('\n', stdout);
 		}
+
+		process_tabs(buffer, l);
+
 		return;
 	}
 
@@ -210,6 +243,7 @@ static void aw_text(FILE *f, int arg) {
 				/* special codes */
 				break;
 			case 0x16:
+				/* TODO - flag for aroff tabbing vs aw tabbing? */
 				/* tab */
 				if (flag_c) {
 					para[pos] = '^';
@@ -266,11 +300,13 @@ void aw_process(FILE *f) {
 	aw_init();
 
 
-	if (flag_c && sfminver) {
+	if (flag_c) {
 		/* print the tab stops */
 		fwrite(header + 5, 80, 1, stdout);
 		fputc('\n', stdout);
 	}
+
+	process_tabs(header + 5, 80);
 
 	for(;;) {
 		int arg = fgetc(f);

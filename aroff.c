@@ -491,16 +491,6 @@ static unsigned one_line(unsigned start, unsigned end, int last) {
 			x += ws;
 		}
 
-		/* TODO -- if this is the final component
-		and just == JUST_FULL, justify the text.
-		exceptions:
-			this is the last line (last is true and no more text)
-		*/
-
-		/* text edit algo seems to be - layout as if left-justified
-		(to find next tab break) then justify.
-		*/
-
 
 		/*
 			if this is the final component and fully justified,
@@ -611,6 +601,13 @@ void aroff_flush_paragraph(int cr) {
 	if ((int)w < MIN_WIDTH) w = MIN_WIDTH;
 
 
+	if (!tab_count) {
+		for (unsigned i = 0; i < pos; ++i) {
+			if (para[i] == '\t') para[i] = ' ';
+		}
+	}
+
+
 	if (cr) {
 		/* remove trailing space (and sticky space) */
 		while (pos > 0 && (para[pos-1] & 0x7f) == ' ') --pos;
@@ -642,17 +639,9 @@ void aroff_flush_paragraph(int cr) {
 		if ((int)w < MIN_WIDTH) w = MIN_WIDTH;
 	}
 
-	if (remaining && start) {
-		memmove(para, para + start, remaining);
-		memmove(style, style + start, remaining);
-		pos = remaining;
-	}
 
+	if (cr) {
 
-	if (!cr) return;
-
-	remaining = pos;
-	start = 0;
 	while (remaining > 0) {
 		int sz = one_line(start, pos, 1);
 		if (sz <= 0) break;
@@ -669,6 +658,17 @@ void aroff_flush_paragraph(int cr) {
 
 	aroff_line = 0;
 	pos = 0;
+
+		return;
+	}
+
+
+	if (remaining && start) {
+		memmove(para, para + start, remaining);
+		memmove(style, style + start, remaining);
+	}
+	pos = remaining;
+
 }
 
 
