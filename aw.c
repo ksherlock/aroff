@@ -76,8 +76,8 @@ void aw_init(void) {
 }
 
 static void process_tabs(unsigned char *buffer, unsigned length) {
-	unsigned j = 0;
-	for (unsigned i = 0, j = 0; i < length; ++i) {
+	unsigned i, j;
+	for (i = 0, j = 0; i < length; ++i) {
 		unsigned c = buffer[i];
 		switch(c) {
 		case '<':

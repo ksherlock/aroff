@@ -43,16 +43,43 @@ static unsigned flip_flop = 0;
 
 int flag_c;
 int flag_f;
+int flag_t;
 
-static char *tc_se = NULL;
-static char *tc_so = NULL;
-static char *tc_ue = NULL;
-static char *tc_us = NULL;
-static char *tc_ZH = NULL;
-static char *tc_ZR = NULL;
-static char *tc_md = NULL;
-static char *tc_mr = NULL;
-static char *tc_me = NULL;
+static char *tc_so = NULL; // enter standout mode
+static char *tc_se = NULL; // exit standout mode
+static char *tc_us = NULL; // enter underline node
+static char *tc_ue = NULL; // end underline mode
+static char *tc_md = NULL; // enter bold mode
+static char *tc_mr = NULL; // enter reverse mode
+static char *tc_me = NULL; // exit all attributes 
+static char *tc_ZH = NULL; // enter italic mode
+static char *tc_ZN = NULL; // enter subscript mode
+static char *tc_ZO = NULL; // enter superscript mode
+static char *tc_ZR = NULL; // exit italic mode
+static char *tc_ZV = NULL; // exit subscript mode
+static char *tc_ZW = NULL; // exit superscript mode
+
+
+static struct {
+	char *name;
+	char **ptr;
+} table[] = {
+	{ "md", &tc_md },
+	{ "me", &tc_me },
+	{ "mr", &tc_mr },
+	{ "se", &tc_se },
+	{ "so", &tc_so },
+	{ "ue", &tc_ue },
+	{ "us", &tc_us },
+	{ "ZH", &tc_ZH },
+	{ "ZN", &tc_ZN },
+	{ "ZO", &tc_ZO },
+	{ "ZR", &tc_ZR },
+	{ "ZV", &tc_ZV },
+	{ "ZW", &tc_ZW },
+};
+
+
 
 static char tcap_buffer[1024];
 static unsigned tcap_buffer_offset = 0;
@@ -85,71 +112,14 @@ void tc_init(void) {
 
 	pcap = buffer2;
 
-	/* ZH/ZR are italic begin/end.  Not usually supported. */
-	cp = tgetstr("ZH", &pcap);
-	if (cp) {
-		tc_ZH = tcap_buffer + tcap_buffer_offset;
-		tputs(cp, 0, tputs_helper);
-		tcap_buffer[tcap_buffer_offset++] = 0;
+	for (unsigned i = 0; i < sizeof(table) / sizeof(table[0]); ++i) {
+		cp = tgetstr(table[i].name, &pcap);
+		if (cp) {
+			*(table[i].ptr) = tcap_buffer + tcap_buffer_offset;
+			tputs(cp, 0, tputs_helper);
+			tcap_buffer[tcap_buffer_offset++] = 0;
+		}
 	}
-
-	cp = tgetstr("ZR", &pcap);
-	if (cp) {
-		tc_ZR = tcap_buffer + tcap_buffer_offset;
-		tputs(cp, 0, tputs_helper);
-		tcap_buffer[tcap_buffer_offset++] = 0;
-	}
-
-	cp = tgetstr("md", &pcap);
-	if (cp) {
-		tc_md = tcap_buffer + tcap_buffer_offset;
-		tputs(cp, 0, tputs_helper);
-		tcap_buffer[tcap_buffer_offset++] = 0;
-	}
-
-	cp = tgetstr("mr", &pcap);
-	if (cp) {
-		tc_mr = tcap_buffer + tcap_buffer_offset;
-		tputs(cp, 0, tputs_helper);
-		tcap_buffer[tcap_buffer_offset++] = 0;
-	}
-
-	cp = tgetstr("me", &pcap);
-	if (cp) {
-		tc_me = tcap_buffer + tcap_buffer_offset;
-		tputs(cp, 0, tputs_helper);
-		tcap_buffer[tcap_buffer_offset++] = 0;
-	}
-
-	cp = tgetstr("so", &pcap);
-	if (cp) {
-		tc_so = tcap_buffer + tcap_buffer_offset;
-		tputs(cp, 0, tputs_helper);
-		tcap_buffer[tcap_buffer_offset++] = 0;
-	}
-
-	cp = tgetstr("se", &pcap);
-	if (cp) {
-		tc_se = tcap_buffer + tcap_buffer_offset;
-		tputs(cp, 0, tputs_helper);
-		tcap_buffer[tcap_buffer_offset++] = 0;
-	}
-
-	/* underlining */
-	cp = tgetstr("us", &pcap);
-	if (cp) {
-		tc_us = tcap_buffer + tcap_buffer_offset;
-		tputs(cp, 0, tputs_helper);
-		tcap_buffer[tcap_buffer_offset++] = 0;
-	}
-
-	cp = tgetstr("ue", &pcap);
-	if (cp) {
-		tc_ue = tcap_buffer + tcap_buffer_offset;
-		tputs(cp, 0, tputs_helper);
-		tcap_buffer[tcap_buffer_offset++] = 0;
-	}
-
 }
 
 
@@ -167,6 +137,8 @@ void aroff_init(void) {
 	tab_count = 0;
 }
 
+#define _(a,b) if ((attr & a) && b) fputs(b, stdout)
+
 /* on some termcaps, eg, vt100, underline end, bold end, etc disable all attr */
 void tc_disable(unsigned attr) {
 	if (tc_me) {
@@ -174,9 +146,12 @@ void tc_disable(unsigned attr) {
 		fputs(tc_me, stdout);
 		return;
 	}
-	if ((attr & ATTR_BOLD) && tc_se) fputs(tc_se, stdout);
-	if ((attr & ATTR_UNDERLINE) && tc_ue) fputs(tc_ue, stdout);
-	if ((attr & ATTR_ITALIC) && tc_ZR) fputs(tc_ZR, stdout);
+	_(ATTR_BOLD, tc_se);
+	_(ATTR_UNDERLINE, tc_ue);
+	_(ATTR_ITALIC, tc_ZR);
+	_(ATTR_SUBSCRIPT, tc_ZV);
+	_(ATTR_SUPERSCRIPT, tc_ZW);
+
 }
 
 void tc_enable(unsigned attr) {
@@ -184,11 +159,14 @@ void tc_enable(unsigned attr) {
 		if (tc_md) fputs(tc_md, stdout);
 		else if (tc_so) fputs(tc_so, stdout);
 	}
-	if ((attr & ATTR_UNDERLINE) && tc_us) fputs(tc_us, stdout);
-	if ((attr & ATTR_ITALIC) && tc_ZH) fputs(tc_ZH, stdout);
-	if ((attr & ATTR_REVERSE) && tc_mr) fputs(tc_mr, stdout);
+	_(ATTR_UNDERLINE, tc_us);
+	_(ATTR_ITALIC, tc_ZH);
+	_(ATTR_SUBSCRIPT, tc_ZN);
+	_(ATTR_SUPERSCRIPT, tc_ZO);
+	_(ATTR_REVERSE, tc_mr);
 }
 
+#undef _
 
 void aroff_render(unsigned char *text, unsigned char *style, unsigned length) {
 
@@ -206,19 +184,29 @@ void aroff_render(unsigned char *text, unsigned char *style, unsigned length) {
 
 		char c = text[i];
 		unsigned a = style[i];
-		// if (c == ' ') a = 0;
+		if (c == ' ') a = 0;
 		if (c == '\t') {
 			c = ' ';
 			a = 0;
 		}
-		if (attr != a) {
+		if (attr != a && !flag_t) {
 			if (attr) tc_disable(attr);
 			if (a) tc_enable(a);
-			attr = a;
 		}
+		attr = a;
 		fputc(c, stdout);
+		if (flag_t && attr) {
+			if (attr & ATTR_UNDERLINE) {
+				fputs("\x08_", stdout);
+			}
+			if (attr & ATTR_BOLD) {
+				fputc(8, stdout);
+				fputc(c, stdout);
+			}
+		}
+
 	}
-	if (attr) tc_disable(attr);
+	if (attr && !flag_t) tc_disable(attr);
 }
 
 
@@ -393,20 +381,22 @@ static int next_tab(unsigned x, unsigned *style) {
 	return -1;
 }
 
+/* TODO -- verify if this handles - correctly */
 static int find_break(unsigned start, unsigned end, unsigned *termchar) {
 
 	int rv = -1;
 	unsigned c = 0;
 	for (unsigned i = start; i < end; ++i) {
 		c = para[i];
-		if (c == '\t') {
+		if (c == ' ') rv = i;
+		else if (c == '-') rv = i + 1;
+		else if (c == '\t') {
 			*termchar = c;
 			return i;
 		}
-		if (c == '-' || c == ' ') rv = i;
 	}
 
-	/* special check for end break */
+	/* special check for end space break */
 	if (para[end] == ' ' && para[end-1] != ' ') {
 		*termchar = 0;
 		return end;
@@ -446,10 +436,12 @@ static unsigned one_line(unsigned start, unsigned end, int last) {
 	/* strip trailing whitespace */
 	unsigned local_end;
 	local_end = bk;
-	if (c == ' ') while (local_end > start && para[local_end - 1] == ' ') --local_end;
-	if (local_end == start) {
-		/* whitespace line? */
-		return bk;
+	if (c == ' ') {
+		while (local_end > start && para[local_end - 1] == ' ') --local_end;
+		if (local_end == start) {
+			/* whitespace line? */
+			return bk;
+		}
 	}
 
 	if (c != '\t') {
@@ -642,22 +634,22 @@ void aroff_flush_paragraph(int cr) {
 
 	if (cr) {
 
-	while (remaining > 0) {
-		int sz = one_line(start, pos, 1);
-		if (sz <= 0) break;
-		start = sz;
-		remaining = pos - sz;
+		while (remaining > 0) {
+			int sz = one_line(start, pos, 1);
+			if (sz <= 0) break;
+			start = sz;
+			remaining = pos - sz;
 
-		/* trim leading whitespace...*/
-		while (remaining > 0 && para[start] == ' ') {
-			--remaining;
-			++start;
+			/* trim leading whitespace...*/
+			while (remaining > 0 && para[start] == ' ') {
+				--remaining;
+				++start;
+			}
+			aroff_line = 1;
 		}
-		aroff_line = 1;
-	}
 
-	aroff_line = 0;
-	pos = 0;
+		aroff_line = 0;
+		pos = 0;
 
 		return;
 	}
@@ -706,8 +698,9 @@ int main(int argc, char **argv) {
 
 	flag_c = 0;
 	flag_f = 0;
+	flag_t = 0;
 
-	while ( (ch = getopt(argc, argv, "cfh")) != -1) {
+	while ( (ch = getopt(argc, argv, "cfht")) != -1) {
 		switch(ch) {
 		case 'c':
 			flag_c = 1;
@@ -717,6 +710,9 @@ int main(int argc, char **argv) {
 			break;
 		case 'h':
 			usage(0);
+			break;
+		case 't':
+			flag_t = 1;
 			break;
 		default:
 			usage(EX_USAGE);

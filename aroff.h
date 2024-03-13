@@ -48,6 +48,7 @@ extern unsigned tab_types[AROFF_MAX_TABS];
 
 extern int flag_c;
 extern int flag_f;
+extern int flag_t;
 
 void aroff_init(void);
 void aroff_flush_paragraph(int cr);
