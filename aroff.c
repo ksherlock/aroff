@@ -400,17 +400,19 @@ static int find_break(unsigned start, unsigned end, unsigned *termchar) {
 	for (unsigned i = start; i < end; ++i) {
 		c = para[i];
 		if (c == '\t') {
-			rv = i;
-			break;
+			*termchar = c;
+			return i;
 		}
 		if (c == '-' || c == ' ') rv = i;
 	}
 
-	if (rv >= 0) *termchar = para[rv];
-	if (rv < 0 && para[end] == ' ') {
+	/* special check for end break */
+	if (para[end] == ' ' && para[end-1] != ' ') {
 		*termchar = 0;
-		rv = end;
+		return end;
 	}
+
+	if (rv >= 0) *termchar = para[rv];
 	return rv;
 }
 
