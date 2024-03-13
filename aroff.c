@@ -406,10 +406,10 @@ static int find_break(unsigned start, unsigned end, unsigned *termchar) {
 		if (c == '-' || c == ' ') rv = i;
 	}
 
-	if (rv >= 0) *termchar = para[c];
+	if (rv >= 0) *termchar = para[rv];
 	if (rv < 0 && para[end] == ' ') {
 		*termchar = 0;
-		rv = end - 1;
+		rv = end;
 	}
 	return rv;
 }
@@ -574,7 +574,7 @@ static unsigned one_line(unsigned start, unsigned end, int last) {
 			return start;
 		}
 
-		unsigned local_end = start + max_width;
+		local_end = start + max_width;
 		if (local_end > end) local_end = end;
 		bk = find_break(start, local_end, &c);
 
@@ -649,12 +649,6 @@ void aroff_flush_paragraph(int cr) {
 
 	if (!cr) return;
 
-
-
-	/* insert a terminal space so find_break will match it. */
-	para[pos] = ' ';
-	style[pos] = 0;
-	++pos;
 	remaining = pos;
 	start = 0;
 	while (remaining > 0) {
