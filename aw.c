@@ -18,7 +18,6 @@ static unsigned indent = 0;
 static unsigned cpi = 10;
 static unsigned attr = 0;
 
-static unsigned char header[300];
 
 static char date_str[32];
 static char time_str[32];
@@ -48,7 +47,8 @@ void aw_init(void) {
 
 	cpi = 10;
 	attr = ATTR_PLAIN;
-	just = flag_f ? JUST_FULL : JUST_LEFT;
+	// just = flag_f ? JUST_FULL : JUST_LEFT;
+	just = JUST_LEFT;
 
 	update_width();
 
@@ -251,7 +251,19 @@ static void aw_text(FILE *f, int arg) {
 					++pos;
 					break;
 				}
+				#if 0
+				if (flag_t) {
+					para[pos] = '\t';
+					style[pos] = attr;
+					++pos;
+					break;
+				}
+				#endif
+				/* drop through */
 			case 0x17:
+				#if 0
+				if (flag_t) break;
+				#endif
 				/* tab fill char */
 				para[pos] = ' ';
 				style[pos] = attr;
@@ -282,31 +294,29 @@ static void aw_text(FILE *f, int arg) {
 #define SHOW_CODE(...) if (flag_c) printf("--------" __VA_ARGS__)
 void aw_process(FILE *f) {
 	
-
-	int ok;
 	int sfminver;
-
-	ok = fread(header, 300, 1, f);
-	if (ok != 1) errx(EX_DATAERR, "Unexpected EOF");
 
 	sfminver = header[183];
 
+	// documentation states 
+	fseek(f, sfminver ? 302 : 300, SEEK_SET);
+	#if 0
 	if (sfminver) {
 		/* skip first line record (2 bytes) */
 		fgetc(f);
 		fgetc(f);
 	}
-
+	#endif
 	aw_init();
 
 
 	if (flag_c) {
 		/* print the tab stops */
-		fwrite(header + 5, 80, 1, stdout);
+		fwrite(header + 5, 79, 1, stdout);
 		fputc('\n', stdout);
 	}
 
-	process_tabs(header + 5, 80);
+	process_tabs(header + 5, 79);
 
 	for(;;) {
 		int arg = fgetc(f);
@@ -386,7 +396,8 @@ void aw_process(FILE *f) {
 		case 0xe0:
 			/* left justification */
 			SHOW_CODE("Unjustified\n");
-			just = flag_f ? JUST_FULL : JUST_LEFT;
+			// just = flag_f ? JUST_FULL : JUST_LEFT;
+			just = JUST_LEFT;
 			break;
 		case 0xe1:
 			/* center */
@@ -470,4 +481,17 @@ void aw_process(FILE *f) {
 	}
 }
 
+int is_aw(void) {
+	if (header_size <= 300) return 0;
+	if (header[4] != 0x4f) return 0; //
+	if (header[183] != 0 && header[183] != 0x30) return 0; // sf min ver
+
+	// check tab stops
+	for (unsigned i = 5; i < 84; ++i) {
+		unsigned c = header[i];
+		if (c != '=' && c != '|' && c != '<' && c != '>' && c != '.' && c != '^')
+			return 0;
+	}
+	return 1;
+}
 

@@ -39,6 +39,9 @@ extern unsigned just;
 extern char *months[12];
 
 
+extern unsigned char header[512];
+extern unsigned header_size;
+
 #define AROFF_BUFFER_SIZE 511
 #define AROFF_MAX_TABS 16
 extern unsigned tab_count;
@@ -47,8 +50,7 @@ extern unsigned tab_types[AROFF_MAX_TABS];
 
 
 extern int flag_c;
-extern int flag_f;
-extern int flag_t;
+
 
 void aroff_init(void);
 void aroff_flush_paragraph(int cr);

@@ -10,6 +10,12 @@
 
 #include "aroff.h"
 
+
+enum {
+	FMT_TERMCAP,
+	FMT_ASCII,
+};
+
 #define MIN_WIDTH 10
 
 char *months[12] = {
@@ -30,6 +36,9 @@ char *months[12] = {
 #undef MIN
 #define MIN(a, b) ( ( (a) < (b) ) ? (a) : (b) )
 
+unsigned char header[512];
+unsigned header_size;
+
 unsigned aroff_indent[2] = { 1, 1 };
 unsigned aroff_width[2] = { 78, 78 };
 
@@ -42,8 +51,8 @@ unsigned aroff_line = 0;
 static unsigned flip_flop = 0;
 
 int flag_c;
-int flag_f;
-int flag_t;
+int flag_T;
+const char *flag_t;
 
 static char *tc_so = NULL; // enter standout mode
 static char *tc_se = NULL; // exit standout mode
@@ -92,12 +101,12 @@ static int tputs_helper(int c) {
 void tc_init(void) {
 	static char buffer[1024];
 	static char buffer2[1024];
-	char *term;
+	const char *term;
 	char *cp;
 	char *pcap;
 	int ok;
 
-	term = getenv("TERM");
+	term = flag_t ? flag_t : getenv("TERM");
 	if (!term || !*term) {
 		warnx("TERM undefined."); return;
 	}
@@ -189,24 +198,24 @@ void aroff_render(unsigned char *text, unsigned char *style, unsigned length) {
 			c = ' ';
 			a = 0;
 		}
-		if (attr != a && !flag_t) {
+		if (attr != a && flag_T == FMT_TERMCAP) {
 			if (attr) tc_disable(attr);
 			if (a) tc_enable(a);
 		}
 		attr = a;
-		fputc(c, stdout);
-		if (flag_t && attr) {
+		if (flag_T == FMT_ASCII) {
 			if (attr & ATTR_UNDERLINE) {
-				fputs("\x08_", stdout);
+				fputs("_\x08", stdout);
 			}
 			if (attr & ATTR_BOLD) {
-				fputc(8, stdout);
 				fputc(c, stdout);
+				fputc(8, stdout);
 			}
 		}
+		fputc(c, stdout);
 
 	}
-	if (attr && !flag_t) tc_disable(attr);
+	if (attr && flag_T == FMT_TERMCAP) tc_disable(attr);
 }
 
 
@@ -677,10 +686,11 @@ void usage(int ec) {
 
 	fputs(
 		"Usage:\n"
-		"aroff [-ch] file ...\n"
-		" -c   show codes\n"
-		" -f   justify the unjustifiable\n"
-		" -h   help\n",
+		"aroff [-ch] [-t terminal] [-T output] file ...\n"
+		" -c            show codes\n"
+		" -t terminal   set terminal type\n"
+		" -T output     set output type (termcap, ascii)\n"
+		" -h            help\n",
 		stdout);
 
 	exit(ec);
@@ -690,6 +700,16 @@ void usage(int ec) {
 void aw_process(FILE *f);
 void awgs_process(FILE *f);
 
+extern int is_awgs(void);
+extern int is_aw(void);
+
+static int parseT(const char *arg) {
+	/* */
+	if (!arg || !*arg) return -1;
+	if (arg[0] == 't' && !strcmp(arg, "termcap")) return FMT_TERMCAP;
+	if (arg[0] == 'a' && !strcmp(arg, "ascii")) return FMT_ASCII;
+	return -1;
+}
 
 int main(int argc, char **argv) {
 
@@ -697,23 +717,25 @@ int main(int argc, char **argv) {
 	unsigned i;
 
 	flag_c = 0;
-	flag_f = 0;
-	flag_t = 0;
+	flag_t = NULL;
+	flag_T = FMT_TERMCAP;
 
-	while ( (ch = getopt(argc, argv, "cfht")) != -1) {
+	while ( (ch = getopt(argc, argv, "cT:t:")) != -1) {
 		switch(ch) {
 		case 'c':
 			flag_c = 1;
-			break;
-		case 'f':
-			flag_f = 1;
 			break;
 		case 'h':
 			usage(0);
 			break;
 		case 't':
-			flag_t = 1;
+			flag_t = optarg;
 			break;
+		case 'T':
+			flag_T = parseT(optarg);
+			if (flag_T < 0) usage(1);
+			break;
+
 		default:
 			usage(EX_USAGE);
 		}
@@ -728,7 +750,20 @@ int main(int argc, char **argv) {
 	for (i = 0; i < argc; ++i) {
 		FILE *f = fopen(argv[i], "rb");
 		if (!f) err(EX_NOINPUT, "fopen %s", argv[i]);
-		awgs_process(f);
+
+		header_size = fread(header, 1, 512, f);
+		if ((int)header_size <= 0) {
+			errx(EX_DATAERR, "fread");
+		}
+		fseek(f, 0, SEEK_SET);
+
+		if (is_awgs())
+			awgs_process(f);
+		else if (is_aw())
+			aw_process(f);
+		else
+			warnx("unknown file type: %s", argv[i]);
+
 		fclose(f);
 	}
 	exit(0);

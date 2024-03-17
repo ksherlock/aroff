@@ -329,3 +329,16 @@ void awgs_process(FILE *f) {
 	free(arrays);
 	free(rulers);
 }
+
+
+int is_awgs(void) {
+
+	if (header_size < 512) return 0;
+	if (READ16(header, 0) != 0x1011) return 0; // version - 1.0v2, 1.1
+	if (READ16(header, 2) != 282) return 0; // header size
+	if (READ16(header, 4) != 48) return 0; // ref rec size
+	if (READ16(header, 54) != 64) return 0; // color table size
+	if (READ16(header, 120) != 160) return 0; // print record size.
+	if (READ16(header, 282) != 2) return 0; // global version.
+	return 1;
+}

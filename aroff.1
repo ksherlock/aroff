@@ -1,0 +1,70 @@
+.Dd $Mdocdate: March 14 2024 $
+.Dt AROFF 1
+.Os
+.Sh NAME
+.Nm aroff
+.Nd format AppleWorks word processor documents
+.Sh SYNOPSIS
+.Nm
+.Op Fl T Ar output
+.Op Fl t Ar terminal
+.Ar
+.Sh DESCRIPTION
+The
+.Nm
+utility formats AppleWorks and AppleWorks GS word processor documents
+for display.
+.Pp
+The following options are available:
+.Bl -tag -width Ds
+.It Fl T Ar output
+Select the output format.
+Supported values for the
+.Ar output
+argument are
+.Cm ascii ,
+.Cm plain ,
+and the default of
+.Cm termcap .
+.It Fl t Ar terminal
+Overrides the terminal type specified in the environment with
+.Ar terminal .
+.El
+.Sh ENVIRONMENT
+The
+.Ev TERM
+environment variables affect the execution of
+.Nm
+as described in
+.Xr environ 7 .
+.Sh EXIT STATUS
+.Ex -std
+.Sh SEE ALSO
+.Xr colcrt 1 ,
+.Xr nroff 1 ,
+.Xr ul 1
+.Sh STANDARDS
+The AppleWorks word processor file format is documented in File Type
+Note $1A.
+The AppleWorks GS word processor file format is documented in File
+Type Note $50/$8010.
+.Sh HISTORY
+GNO/ME 1.0 included the
+.Nm
+utility to display AppleWorks GS word processor documents
+.Pq which were used as manual pages at the time .
+GNO/ME 1.1 included the
+.Nm aw30
+utility to display AppleWorks 3.0 word processor documents.
+.Sh AUTHORS
+.Nm
+.An -nosplit
+was originally written by
+.An Jawaid Bazyar .
+.Nm aw30
+was originally written by
+.An Robert Hill .
+The
+.Nm
+utility was rewritten and expanded by
+.An Kelvin Sherlock .
