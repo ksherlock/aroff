@@ -8,6 +8,7 @@
 .Nm
 .Op Fl T Ar output
 .Op Fl t Ar terminal
+.Op Fl c
 .Ar
 .Sh DESCRIPTION
 The
@@ -29,7 +30,23 @@ and the default of
 .It Fl t Ar terminal
 Overrides the terminal type specified in the environment with
 .Ar terminal .
+.It Fl c
+Displays printer option codes, similar to AppleWorks' zoom command
+or printer options display.
 .El
+.Ss Output
+Output produced by
+.Fl T Ar termcap
+will use the termcap database for styling bold, italic, underline,
+superscript, and subscript text.
+.Pp
+Output produced by
+.Fl T Ar ascii
+will use the backspace characters to simulate bold and underline text.
+.Pp
+Output produced by
+.Fl T Ar plain
+will not style text.
 .Sh ENVIRONMENT
 The
 .Ev TERM

@@ -14,6 +14,7 @@
 enum {
 	FMT_TERMCAP,
 	FMT_ASCII,
+	FMT_PLAIN,
 };
 
 #define MIN_WIDTH 10
@@ -687,7 +688,7 @@ void usage(int ec) {
 	fputs(
 		"Usage:\n"
 		"aroff [-ch] [-t terminal] [-T output] file ...\n"
-		" -c            show codes\n"
+		" -c            show printer options\n"
 		" -t terminal   set terminal type\n"
 		" -T output     set output type (termcap, ascii)\n"
 		" -h            help\n",
@@ -708,6 +709,7 @@ static int parseT(const char *arg) {
 	if (!arg || !*arg) return -1;
 	if (arg[0] == 't' && !strcmp(arg, "termcap")) return FMT_TERMCAP;
 	if (arg[0] == 'a' && !strcmp(arg, "ascii")) return FMT_ASCII;
+	if (arg[0] == 'p' && !strcmp(arg, "plain")) return FMT_PLAIN;
 	return -1;
 }
 
