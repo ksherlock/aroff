@@ -79,25 +79,26 @@ static void process_tabs(unsigned char *buffer, unsigned length) {
 	unsigned i, j;
 	for (i = 0, j = 0; i < length; ++i) {
 		unsigned c = buffer[i];
+		unsigned ii = i + left_margin;
 		switch(c) {
 		case '<':
 		case '|': /* aw 2.0 */
-			tab_stops[j] = i;
+			tab_stops[j] = ii;
 			tab_types[j] = TAB_LEFT;
 			++j;
 			break;
 		case '>':
-			tab_stops[j] = i;
+			tab_stops[j] = ii;
 			tab_types[j] = TAB_RIGHT;
 			++j;
 			break;
 		case '^':
-			tab_stops[j] = i;
+			tab_stops[j] = ii;
 			tab_types[j] = TAB_CENTER;
 			++j;
 			break;
 		case '.':
-			tab_stops[j] = i;
+			tab_stops[j] = ii;
 			tab_types[j] = TAB_DECIMAL;
 			++j;
 			break;
@@ -106,6 +107,12 @@ static void process_tabs(unsigned char *buffer, unsigned length) {
 	}
 	tab_count = j;
 }
+
+static void adjust_tabs(int fudge) {
+	for (unsigned i = 0; i < tab_count; ++i)
+		tab_stops[i] += fudge;
+}
+
 
 static void aw_text(FILE *f, int arg) {
 
@@ -242,8 +249,17 @@ static void aw_text(FILE *f, int arg) {
 			case 0x15:
 				/* special codes */
 				break;
+
+/*
+ appleworks uses an $16 to indicate a tab but also uses $17 to pad it out for display.
+ if we treat them as spaces, we don't need to do any re-formatting.
+
+with -x we will re-render. otherwise, we just treat as spaces.
+
+
+*/
+
 			case 0x16:
-				/* TODO - flag for aroff tabbing vs aw tabbing? */
 				/* tab */
 				if (flag_c) {
 					para[pos] = '^';
@@ -251,20 +267,18 @@ static void aw_text(FILE *f, int arg) {
 					++pos;
 					break;
 				}
-				#if 0
-				if (flag_t) {
+				if (flag_x) {
 					para[pos] = '\t';
 					style[pos] = attr;
 					++pos;
 					break;
 				}
-				#endif
+
 				/* drop through */
 			case 0x17:
-				#if 0
-				if (flag_t) break;
-				#endif
-				/* tab fill char */
+				/* tab fill character */
+				if (flag_x) break;
+
 				para[pos] = ' ';
 				style[pos] = attr;
 				++pos;
@@ -298,15 +312,12 @@ void aw_process(FILE *f) {
 
 	sfminver = header[183];
 
-	// documentation states 
+	/*
+		If SFMinVers is non-zero, the first line record (two bytes long) is invalid 
+		and should be skipped.
+	*/
 	fseek(f, sfminver ? 302 : 300, SEEK_SET);
-	#if 0
-	if (sfminver) {
-		/* skip first line record (2 bytes) */
-		fgetc(f);
-		fgetc(f);
-	}
-	#endif
+
 	aw_init();
 
 
@@ -355,22 +366,29 @@ void aw_process(FILE *f) {
 			SHOW_CODE("Platen Width: %u.%u inches\n", arg / 10, arg %10);
 			if (arg < 10) arg = 10;
 			if (arg > 132) arg = 132;
-			platen_width = arg;
-			update_width();
+			if (arg != platen_width) {
+				platen_width = arg;
+				update_width();
+			}
 			break;
 		case 0xd9:
 			/* left margin */
 			SHOW_CODE("Left Margin: %u.%u inches\n", arg / 10, arg %10);
 			if (arg > 90) arg = 90;
-			left_margin = arg;
-			update_width();
+			if (arg != left_margin) {
+				adjust_tabs(arg - left_margin);
+				left_margin = arg;
+				update_width();
+			}
 			break;
 		case 0xda:
 			/* right margin */
 			SHOW_CODE("Right Margin: %u.%u inches\n", arg / 10, arg %10);
 			if (arg > 90) arg = 90;
-			right_margin = arg;
-			update_width();
+			if (arg != right_margin) {
+				right_margin = arg;
+				update_width();
+			}
 			break;
 		case 0xdb: /* chars per inch */
 			SHOW_CODE("Chars per Inch: %u chars\n", arg);
@@ -484,7 +502,7 @@ void aw_process(FILE *f) {
 int is_aw(void) {
 	if (header_size <= 300) return 0;
 	if (header[4] != 0x4f) return 0; //
-	if (header[183] != 0 && header[183] != 0x30) return 0; // sf min ver
+	if (header[183] != 0 && header[183] != 30) return 0; // sf min ver
 
 	// check tab stops
 	for (unsigned i = 5; i < 84; ++i) {

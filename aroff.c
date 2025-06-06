@@ -52,6 +52,7 @@ unsigned aroff_line = 0;
 static unsigned flip_flop = 0;
 
 int flag_c;
+int flag_x;
 int flag_T;
 const char *flag_t;
 
@@ -468,6 +469,9 @@ static unsigned one_line(unsigned start, unsigned end, int last) {
 	unsigned x = 0;
 	unsigned max_x = w + tab_stop;
 
+
+
+
 	for(;;) {
 
 		unsigned l = local_end - start;
@@ -581,8 +585,11 @@ static unsigned one_line(unsigned start, unsigned end, int last) {
 			return start;
 		}
 
-		/* strip trailing whitespace */
+
 		local_end = bk;
+		if (c == '\t') continue;
+
+		/* strip trailing whitespace */
 		if (c == ' ') while (local_end > start && para[local_end - 1] == ' ') --local_end;
 		if (local_end == start) {
 			fputc('\n', stdout);
@@ -688,7 +695,7 @@ void usage(int ec) {
 	fputs(
 		"Usage:\n"
 		"aroff [-ch] [-t terminal] [-T output] file ...\n"
-		" -c            show printer options\n"
+		" -c            display format codes\n"
 		" -t terminal   set terminal type\n"
 		" -T output     set output type (termcap, ascii)\n"
 		" -h            help\n",
@@ -721,8 +728,9 @@ int main(int argc, char **argv) {
 	flag_c = 0;
 	flag_t = NULL;
 	flag_T = FMT_TERMCAP;
+	flag_x = 0;
 
-	while ( (ch = getopt(argc, argv, "cT:t:")) != -1) {
+	while ( (ch = getopt(argc, argv, "cT:t:x")) != -1) {
 		switch(ch) {
 		case 'c':
 			flag_c = 1;
@@ -736,6 +744,9 @@ int main(int argc, char **argv) {
 		case 'T':
 			flag_T = parseT(optarg);
 			if (flag_T < 0) usage(1);
+			break;
+		case 'x':
+			flag_x = 1;
 			break;
 
 		default:

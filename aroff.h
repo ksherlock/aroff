@@ -50,6 +50,7 @@ extern unsigned tab_types[AROFF_MAX_TABS];
 
 
 extern int flag_c;
+extern int flag_x;
 
 
 void aroff_init(void);
