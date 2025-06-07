@@ -446,6 +446,7 @@ void aw_process(FILE *f) {
 		case 0xe9:
 			/* new page */
 			SHOW_CODE("New Page\n");
+			fputc('\f', stdout);
 			break;
 		case 0xea: /* group begin */
 			SHOW_CODE("Group Begin\n");
