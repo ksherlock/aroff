@@ -375,8 +375,34 @@ static void print_helper(unsigned start, unsigned end, int last) {
 	}
 
 	fputc('\n', stdout);
-	// aroff_line = 1;
 }
+
+/* like above but uses ftext/fstyle.  full justification not supported. */
+static void print_helper_2(unsigned sz, unsigned cr) {
+
+	unsigned ws = aroff_indent[aroff_line];
+	unsigned w = aroff_width[aroff_line];
+	if ((int)w < MIN_WIDTH) w = MIN_WIDTH;
+
+	switch(just) {
+	case JUST_FULL:
+		break;
+	case JUST_LEFT:
+		break;
+	case JUST_CENTER:
+		ws += (w - sz) >> 1;
+		break;
+	case JUST_RIGHT:
+		ws += (w - sz);
+		break;
+	}
+
+	for (unsigned i = 0; i < ws; ++i) fputc(' ', stdout);
+
+	aroff_render(ftext, fstyle, sz);
+	if (cr) fputc('\n', stdout);
+}
+
 
 unsigned tab_count = 0;
 unsigned tab_stops[AROFF_MAX_TABS];
@@ -462,15 +488,55 @@ static unsigned one_line(unsigned start, unsigned end, int last) {
 	}
 
 	/* complex case - tabs */
-	/* n.b. - indent is handled as if it were a tab */
-	unsigned tab_stop = aroff_indent[aroff_line];
+	/* expand tabs into a buffer, then justify that. */
+
+
+	/*
+	 Tabbing and justification:
+	 Based on a study of AppleWorks Classic, AppleWorks GS, (OS X) TextEdit, and MS Word/TextPad:
+
+	 They generally agree that tabs are expanded as-if the text were unjustified/left justified.
+	 Then that block of text is centered/right justified.
+
+	 For full justification, only the rightmost portion is fully-justified (ie, a tab or CR cancels
+	 the justification)
+
+	 Caveats:
+
+	 Word/TextPad:
+	 There are implicit tabs every 1/2 inch.
+	 Tabbing will advance to the next explicit tab stop.
+	 If there is no explicit tab stop, it will advance to the next 1/2 inch.
+	 left/right/center/numeric tabs are supported but overly difficult to set.
+
+	 AppleWorks (classic)
+	 Full-justified text does the tab -> expanssion, then fully justifies the results.
+	 Full justification only happens when printing.
+	 Tabs cause some text to get moved beyond the right margin when printing.
+
+	 AppleWorks stores the tab as well as tab padding characters in the file.
+	 (tab -> space handled in aw.c for compatiblity unless -x)
+
+	 AppleWorks (GS)
+	 with center/right justification, AWGS gives up and treats the tab character as a space.
+	 (tab -> space conversion handled in awgs.c for compatibility unless -x)
+
+
+	 */
+
+	/* indent will be handled by print_helper_2 */
+
+
+	unsigned indent = aroff_indent[aroff_line];
+
+	unsigned tab_stop = 0; // aroff_indent[aroff_line];
 	unsigned tab_style = TAB_LEFT;
 
-	unsigned x = 0;
-	unsigned max_x = w + tab_stop;
+	unsigned x = indent;
+	unsigned max_x = w + indent;
 
 
-
+	unsigned fix = 0; /* index into ftext/fstyle. */
 
 	for(;;) {
 
@@ -492,8 +558,16 @@ static unsigned one_line(unsigned start, unsigned end, int last) {
 		}
 
 		if ((int)ws > 0) {
-			for (unsigned i = 0; i < ws; ++i)
-				fputc(' ', stdout);
+
+			unsigned attr = style[start];
+			for (unsigned i = 0; i < ws; ++i) {
+				ftext[fix] = ' ';
+				fstyle[fix] = attr;
+				++fix;
+			}
+
+			// for (unsigned i = 0; i < ws; ++i)
+				// fputc(' ', stdout);
 			x += ws;
 		}
 
@@ -508,31 +582,40 @@ static unsigned one_line(unsigned start, unsigned end, int last) {
 			if (last && bk == end) rm = 0;
 
 			if (rm) {
+				print_helper_2(fix, 0);
 				full_justify_chunk(start, bk, w - tab_stop);
 				fputc('\n', stdout);
 				return bk;
 			}
 		}
 
-		aroff_render(para + start, style + start, l);
-		x += l;
+
+		if (l) {
+			memcpy(ftext + fix, para + start, l);
+			memcpy(fstyle + fix, style + start, l);
+			x += l;
+			fix += l;
+			x += l;
+		}
+
+		// aroff_render(para + start, style + start, l);
 
 		if (c != '\t') {
-			fputc('\n', stdout);
+			print_helper_2(fix, 1);
 			return bk;
 		}
 
 		/* reminder: para[bk] is a tab */
 		tab_stop = next_tab(x, &tab_style);
 		if ((int)tab_stop < 0 || tab_stop > max_x) {
-			fputc('\n', stdout);
+			print_helper_2(fix, 1);
 			return bk;
 		}
 
 		/* skip over the tab */
 		start = bk + 1;
 		if (start == end) {
-			fputc('\n', stdout);
+			print_helper_2(fix, 1);
 			return end;
 		}
 
@@ -568,7 +651,7 @@ static unsigned one_line(unsigned start, unsigned end, int last) {
 		}
 
 		if ((int)max_width <= 0) {
-			fputc('\n', stdout);
+			print_helper_2(fix, 1);
 			return start;
 		}
 
@@ -581,7 +664,7 @@ static unsigned one_line(unsigned start, unsigned end, int last) {
 		*/
 
 		if (bk < 0) {
-			fputc('\n', stdout);
+			print_helper_2(fix, 1);
 			return start;
 		}
 
@@ -592,7 +675,7 @@ static unsigned one_line(unsigned start, unsigned end, int last) {
 		/* strip trailing whitespace */
 		if (c == ' ') while (local_end > start && para[local_end - 1] == ' ') --local_end;
 		if (local_end == start) {
-			fputc('\n', stdout);
+			print_helper_2(fix, 1);
 			return bk;
 		}
 	}
