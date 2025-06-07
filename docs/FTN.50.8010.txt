@@ -1,0 +1,502 @@
+Apple II
+File Type Notes
+_____________________________________________________________________________
+                                                  Developer Technical Support
+
+File Type:         $50 (80)
+Auxiliary Type:    $8010
+
+Full Name:     AppleWorks GS Word Processor File
+Short Name:    AppleWorks GS Word Processor
+
+Revised by:    Matt Deatherage & Dave Lyons                    September 1990
+Written by:    Sydney R. Polk & Stephan Schwirzke,                  July 1990
+               Claris Corporation
+               Matt Deatherage, Apple Computer, Inc.
+
+Files of this type and auxiliary type contain word processor documents from 
+AppleWorks GS.
+Changes since July 1990:  Corrected the document format to include a count of 
+the SaveArray entries, since such a count there is.  Also added a description 
+of how to count rulers.
+_____________________________________________________________________________
+
+AppleWorks GS is an integrated desktop productivity system for the Apple IIgs 
+personal computer.  AppleWorks GS includes a word processor, spreadsheet, data 
+base, communications module and page layout module in one program.  The word 
+processor (whose file format is described herein) is paragraph-based and 
+allows multiple fonts, styles, sizes, colors and rulers.
+
+For more information on AppleWorks GS, contact:
+
+                    Claris Corporation
+                    5201 Patrick Henry Drive
+                    P.O. Box 58168
+                    Santa Clara, CA 95052-8168
+
+                    Technical Support
+                    Telephone:  (408) 727-9054
+                    AppleLink:  Claris.Tech
+
+                    Customer Relations
+                    Telephone:  (408) 727-8227
+                    AppleLink:  Claris.CR
+
+The AppleWorks GS file format is copyrighted (C) 1990 by Claris Corporation and 
+is printed here with permission.
+
+
+Definitions
+
+The following definitions are used in this document in addition to those 
+defined for all Apple II file types:
+
+Paragraph     An AppleWorks GS paragraph consists of a paragraph header and a 
+              carriage return ($0D) with text in between.  The paragraph 
+              header is defined later in this Note.
+
+Font change   A font change is signified by the one Byte token $01, followed 
+              by the Word new font family number.
+
+Style change  A style change is signified by the one Byte token $02 followed 
+              by the new Style Byte.  The format of the Style Byte is 
+              included in this section.
+
+Size change   A size change is signified by the one Byte token $03, followed 
+              by the Byte new font size.
+
+Color change  A color change is signified by the one Byte token $04, followed 
+              by the Byte new color.  The color is an offset (0-15) into 
+              QuickDraw II color table number zero.  
+
+Style Byte    A style byte is a Byte of bit flags, defined as follows:
+
+              Bit 7:    Subscript
+              Bit 6:    Superscript
+              Bit 5:    Reserved for future use
+              Bit 4:    Shadow
+              Bit 3:    Outline
+              Bit 2:    Underline
+              Bit 1:    Italic
+              Bit 0:    Bold
+
+              When using a Style Byte with QuickDraw II, be sure to mask out 
+              bits 6 and 7 as QuickDraw II does not support these styles.
+
+Text Block    The Text Block is how AppleWorks GS stores text in memory.  The 
+              format is as follows:
+
+              blockSize  (+000)  Word        The length of this Text Block, 
+                                             including the block size.
+              blockUsed  (+002)  Word        The number of bytes actually 
+                                             used by this Text Block.  
+                                             If this is less than blockSize, 
+                                             the remaining bytes should be 
+                                             ignored. This will not happen on 
+                                             disk.
+              theText    (+004)  Paragraphs  Paragraphs, as defined in this 
+                                             section.
+
+              Paragraphs are stored consecutively within Text Blocks, and a 
+              paragraph is not split over two or more Text Blocks.  If there 
+              is more than one Text Block, consecutive Text Blocks contain 
+              consecutive sets of paragraphs.
+
+Text Block Records
+              Text Block Records consist of a Long giving the size followed 
+              by a text block.  A Text Block Record is redundant.
+
+Reserved Characters
+              ASCII characters $01-$07 have special meaning in an 
+              AppleWorks GS WP file and are considered special characters.
+              Character $09 has is the Tab character and character $0D is 
+              the only paragraph ending character, the Return.
+
+              $01:  Font change   described in this section
+              $02:  Style change  described in this section
+              $03:  Size change   described in this section
+              $04:  Color change  described in this section
+              $05:  Page token    to be replaced with the page number of 
+                                  this page 
+              $06:  Date token    to be replaced with the current ASCII date 
+              $07:  Time token    to be replaced with the current ASCII time
+
+Dates and times are in the "Thursday, July 5th, 1989 06:30 PM" 
+format.
+
+              $09:  Tab           the tab character
+              $0D:  Return        ends a paragraph
+
+Paragraph header
+              A paragraph header is seven bytes long:
+
+              firstFont  (+000)  Word        Font family number of the first 
+                                             character in the paragraph.
+              firstStyle (+002)  Style Byte  The style of the first character 
+                                             in the paragraph.
+              firstSize  (+003)  Byte        The size (in points) of the 
+                                             first character in the paragraph.
+              firstColor (+004)  Byte        The color of the first character 
+                                             in the paragraph, as an offset 
+                                             into QuickDraw II color table 
+                                             zero.
+              reserved   (+005)  Word        Reserved for future use.
+
+Document header
+              A document header is found at the beginning of every AppleWorks 
+              GS word processing file.  The header begins at offset zero and 
+              is 282 bytes long:
+
+              version    (+000)  Word        The version number of the file 
+                                             format.  This is $1011 for 
+                                             AppleWorks GS version 1.0v2 
+                                             and 1.1.
+              headerSize (+002)  Word        Total size of the header in 
+                                             bytes.  This is 282 ($11A) for
+                                             version $0100.
+              refRecSize (+004)  Word        Size of the reference record 
+                                             (fields rBits through rColor) in 
+                                             bytes.  Always 48 ($30).
+              rBits      (+006)  22 Bytes    Each word in rBits 
+                                             is a bit flag representing 
+                                             the state of one of the 
+                                             AppleWorks GS menus when 
+                                             the file was saved.  For 
+                                             example, if bit 0 of the 
+                                             fourth word is clear, then 
+                                             the first item in the 
+                                             fourth menu was disabled 
+                                             when the file was saved.
+              rUndo      (+028)  Long        Reserved; set to zero.
+              rState     (+032)  Long        Reserved; set to zero.
+              rNum       (+036)  Word        Reserved; set to zero.
+              rRefCon    (+038)  Long        Reserved; set to zero.
+              rChange    (+042)  Long        Reserved; set to zero.
+              rPrint     (+046)  Long        Reserved; set to zero.
+              rColor     (+050)  Long        Reserved; set to zero.
+              cTabSize   (+054)  Word        Size of the color 
+                                             table in bytes.  This is 
+                                             always 64.  This is twice 
+                                             as large as needed; the 
+                                             second 32 bytes of color 
+                                             table space are reserved 
+                                             for future expansion.
+              colorTable (+056)  32 Bytes    The QuickDraw II 
+                                             color table for this 
+                                             document.
+              reserved   (+082)  32 Bytes    Reserved for 
+                                             future expansion.  The size 
+                                             of this field is included 
+                                             in cTabSize.
+              pRecSize   (+120)  Word        Size of the print 
+                                             record in bytes.  This is 
+                                             always 160.
+              printRecord (+122) 160 Bytes   A Print 
+                                             Manager print record for 
+                                             this document.
+
+Word Processor Global Variables
+              Some global variables for the document are calculated after the 
+              file is read; these are marked "reserved."  The total size of 
+              the globals is 386 bytes.  The document is actually stored as 
+              three documents--the text, the header and the footer, as is 
+              described in the "File Structure" section of this Note.  The 
+              AppleWorks GS word processor swaps a section of data depending 
+              on whether the text, header or footer was showing when the file 
+              was saved.  The first section reflects the state of the 
+              document at save time and is a duplicate of one of the other 
+              three sections, depending on the value of "stuff".  The 
+              switched variables are defined in this section as "SwapVars."
+
+              intVersion  (+000)  Word       AWGS WP internal version; 
+                                             currently $0002.
+              view        (+002)  Word       The current view.  
+                                             Possible values are $0000 
+                                             for the text, $0001 for the 
+                                             header and $FFFF (-1) for 
+                                             the footer.
+              stuff       (+004)  Word       Indicates which 
+                                             sections variables were 
+                                             swapped in when the file 
+                                             was saved.  Possible values 
+                                             are $0000 for the text, 
+                                             $0001 for the header and 
+                                             $FFFF (-1) for the footer.
+              curDate     (+006)  String     The ASCII date 
+                                             when the file was saved.  
+                                             This field always takes 26 
+                                             bytes regardless of the 
+                                             length of the string.
+              curTime     (+032)  String     The ASCII time 
+                                             when the file was saved.  
+                                             This field always takes 10 
+                                             bytes regardless of the 
+                                             length of the string.
+
+              Dates and times are in the "Thursday, July 5th, 1989 06:30 PM" 
+              format.
+
+              curPageNum  (+042)  String     The ASCII current 
+                                             page number (e.g., "15").  
+                                             This field always takes 8 
+                                             bytes regardless of the 
+                                             length of the string.
+
+              The next seven fields are used in headers and footers for 
+              time, date and page tokens.
+
+              docPages    (+050)  Word       Number of pages in 
+                                             current document.
+              startPage   (+052)  Word       Number with which 
+                                             to start pagination.
+              reserved    (+054)  Word       Reserved; set to 
+                                             zero when writing.
+              visRuler    (+056)  Word       Boolean; FALSE ($0000) 
+                                             if ruler is not showing, 
+                                             TRUE ($0001) if it is.
+              reserved    (+058)  Long       Reserved; set to 
+                                             zero when writing.
+              headerHeight (+062) Word       Height of header 
+                                             in pixels; maximum of 110.
+              footerHeight (+064) Word       Height of footer 
+                                             in pixels; maximum of 110.
+
+              The next 80 bytes are swapped out variables defined in 
+              this section:
+
+              currentVars (+066)  SwapVars   80 bytes 
+                                             reflecting current 
+                                             variables when the document 
+                                             was saved.
+              docVars     (+146)  SwapVars   The document's variables.
+              headerVars  (+226)  SwapVars   The header's variables.
+              footerVars  (+306)  SwapVars   The footer's variables.
+
+SwapVars      The SwapVars are variables that are different for the text, 
+              header and footer.  The set of SwapVars in docVars is the 
+              variables at the time the file was saved.  The remaining three 
+              sets of SwapVars apply to their sections of the file.
+
+              reserved    (+000)  Long       Reserved; set to 
+                                             zero when writing.
+              reserved    (+004)  Long       Reserved; set to 
+                                             zero when writing.
+              reserved    (+008)  Word       Reserved; set to 
+                                             zero when writing.
+              lastPrgph   (+010)  Word       The number of the 
+                                             last defined paragraph in 
+                                             the document.  Paragraphs 
+                                             are numbered from one.
+              pageSize    (+012)  Word       Page size 
+                                             (vertically), in pixels.
+              topSpace    (+014)  Word       Top space above 
+                                             page, in pixels.
+              bottomSpace (+016)  Word       Bottom space below 
+                                             page, in pixels.
+              paperSize   (+018)  Word       Paper size 
+                                             (vertically), in pixels.
+              horRulerRes (+020)  Word       Horizontal resolution 
+                                             for ruler, in pixels
+              oPageRect   (+022)  Word       Offset from paper 
+                                             to page rect, horizontally, 
+                                             in pixels.
+              windPage    (+024)  Word       The page number 
+                                             that begins the current 
+                                             window.
+              lineOffset  (+026)  Word       How far down the 
+                                             top page the window starts, 
+                                             in pixels.
+              firstPrgph  (+028)  Word       Number of the 
+                                             paragraph (paragraphs are 
+                                             numbered from one) that has 
+                                             the first text on this page.
+              firstLine   (+030)  Word       Number of the 
+                                             first line in this 
+                                             paragraph in the window.
+              height      (+032)  Word       The height of the 
+                                             paragraph before the first 
+                                             line, in pixels in the window.
+              topSel      (+034)  Word       The paragraph 
+                                             number of the topmost 
+                                             portion of the selection, 
+                                             or zero for no selection.
+              topSelLine  (+036)  Word       The line number of 
+                                             the topmost portion of the 
+                                             selection.
+              selOffset   (+038)  Word       The offset into 
+                                             the paragraph in bytes of 
+                                             the first character of the 
+                                             selection.
+              reserved    (+040)  Long       Reserved; set to 
+                                             zero when writing.
+              insFlag     (+044)  Word       Zero for a single 
+                                             insertion point, one for a 
+                                             selected range.
+              caretEnd    (+046)  8 Bytes    End points of the 
+                                             caret line.  
+              rangePar    (+054)  Word       The paragraph number of the 
+                                             end of the selection.
+              rangeLine   (+056)  Word       The line number of 
+                                             the end of the selection.
+              rangeOffset (+058)  Word       The offset of the 
+                                             end of the selection
+              stylePending (+060) Boolean Word
+                                             TRUE if the current font 
+                                             has been changed but 
+                                             nothing has been typed.
+              fontID      (+062)  Long       The font ID of the 
+                                             current font.
+              color       (+066)  Word       The low byte is the current 
+                                             color byte (0-15); the 
+                                             high byte is zero.
+              topPrgphLine (+068) Word       The top paragraph 
+                                             on the screen.
+              topLine     (+070)  Word       The top line of the paragraph 
+                                             on the screen.
+              topPB       (+072)  Word       Top page boundary--
+                                             the page number of the top 
+                                             line in the window.
+              bottomPrgph (+074)  Word       Paragraph number of the 
+                                             bottom paragraph on screen 
+              bottomLine  (+076)  Word       Bottom line on screen
+              bottomPB    (+078)  Word       Bottom page boundary--
+                                             the page number of the 
+                                             bottom line in the window.
+
+SaveArray entry
+              In the main document there will be one entry in a SaveArray for 
+              each paragraph in the document.  Each entry is 12 bytes:
+
+              textBlock   (+000)  Word       Text Block number.  
+                                             Text Blocks are numbered 
+                                             from zero in the document; 
+                                             this entry shows in which 
+                                             text block this paragraph 
+                                             can be found.
+              offset      (+002)  Word       Adding this value 
+                                             to the offset of the text 
+                                             block gives the beginning 
+                                             of the paragraph.
+              attributes  (+004)  Word       $0000 = Normal text, 
+                                             $0001 = page break paragraph.
+              rulerNum    (+006)  Word       Number of the 
+                                             ruler associated with this 
+                                             paragraph.  If this 
+                                             paragraph is a page break 
+                                             paragraph, ignore this field.
+              pixelHeight (+008)  Word       Height of this 
+                                             paragraph in pixels.
+              numLines    (+010)  Word       Number of lines in 
+                                             this paragraph.
+
+Ruler         Each paragraph has a ruler associated with it; the rulers are 
+              stored in the order in which they appear in the document and are 
+              numbered consecutively beginning with zero.  Rulers are 52 bytes 
+              long and have the following structure:
+
+              numParagraphs (+000) Word      The number of paragraphs 
+                                             using this ruler.
+              statusBits  (+002)  Flag Word  Bits 15-8:  Reserved for 
+                                                         future use.
+                                             Bit 7:      Full justification
+                                             Bit 6:      Right justification
+                                             Bit 5:      Center justification
+                                             Bit 4:      Left justification
+                                             Bit 3:      Paragraph cannot 
+                                                         break pages if this 
+                                                         bit is set.
+                                             Bit 2:      Triple spaced 
+                                                         (really double)
+                                             Bit 1:      Double spaced 
+                                                         (really one and 
+                                                         one half)
+                                             Bit 0:      Single spaced
+              leftMargin  (+004)  Word       Left margin in 
+                                             pixels from the left edge 
+                                             of the window.
+              indentMargin (+006) Word       Indent margin in 
+                                             pixels from the left edge 
+                                             of the window.
+              rightMargin (+008)  Word       Right margin in 
+                                             pixels from the left edge 
+                                             of the window.
+              numTabs     (+010)  Word       This will be a 
+                                             number from one to ten; 
+                                             there is always at least 
+                                             one tab.
+              tabRecs     (+012)             10 Tab Records
+                                             A tab record is defined in 
+                                             the following section.
+
+Because rulers are defined consecutively from zero, you can use the SaveArray 
+entries to find the total number of rulers.  Look at the ruler number for each 
+SaveArray entry; the highest-numbered ruler you find is an indication of the 
+ruler count.  For example, if the highest rulerNum in any SaveArray entry is 
+$0003, there are four rulers in the document.
+
+Tab Record    A tab record identifies the type of tab in a ruler:
+
+              tabLocation (+000)  Word       The location of the tab, 
+                                             in pixels, from the left edge 
+                                             of the screen.
+              tabType     (+002)  Word       The type of tab.  
+                                             $0000 is a left tab; $0001 
+                                             is a right tab, and -1 ($FFFF) 
+                                             is a decimal tab, which 
+                                             centers around period characters.
+
+
+File Format and Structure
+
+The AppleWorks GS Word Processor file is composed of sections defined in 
+"Definitions."  The document structure is as follows:
+
+              docHeader   (+000)  Document Header
+              globals     (+282)  WP Globals
+              docSACount  (+668)  Word       Number of SaveArray 
+                                             entries to follow
+              docSaveArray (+670) SaveArray entries
+                                             One entry for each paragraph
+              docRulers   (+xxx)  Rulers     The rulers start here.  
+                                             "xxx" is at +670 + 12* the 
+                                             number of paragraphs.
+              docTextBlocks (+yyy) Text Block Records
+                                             The text block records start 
+                                             here.  Note that when saved to 
+                                             disk, there is no extra space in 
+                                             a Text Block so the size is 
+                                             equal to the used field.  
+                                             "yyy" is at "xxx"+52*number of 
+                                             rulers.
+              headSaveArray       SaveArray entries
+                                             SaveArray entries for this 
+                                             document's header.  The offset 
+                                             depends on the length of the 
+                                             document's text blocks.
+              headRulers          Rulers     The rulers for the header.
+              headTextBlocks      Text Block Records
+                                             The text for the header.
+              footSaveArray       SaveArray entries
+                                             The SaveArray entries for this 
+                                             document's footer.
+              footRulers          Rulers     The rulers for the footer.
+              footTextBlocks      Text Block Records
+                                             The text for the footer.
+
+Please note that the number of paragraphs stored in the document is always one 
+greater than the number displayed in the window.  The last character is always 
+a Return character.  The number of carriage returns displayed is equal to the 
+number of carriage returns stored minus one.  This is so all of the paragraphs 
+are guaranteed to end in a carriage return internally.
+
+Blank document sections have a zero in the lastPrgph field of the SwapVars and 
+have no save arrays, rulers, or text blocks.
+
+The maximum number of paragraphs in a document is 64K-1 (65,535) and the 
+maximum number of characters in a paragraph is 64K-13 (65,523), giving a 
+maximum theoretical document size of a healthy 4,294,049,805 characters.
+
+Further Reference
+_____________________________________________________________________________
+  o  Apple IIgs Toolbox Reference, Volumes 1 through 3
+
