@@ -580,7 +580,7 @@ static unsigned one_line(unsigned start, unsigned end, int last) {
 
 			if (rm) {
 				print_helper_2(fix, 0);
-				full_justify_chunk(start, bk, w - tab_stop);
+				full_justify_chunk(start, bk, max_x - tab_stop);
 				fputc('\n', stdout);
 				return bk;
 			}
