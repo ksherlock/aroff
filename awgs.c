@@ -220,7 +220,7 @@ void process_para(unsigned char *ruler, unsigned char *pp) {
 				/* tab char.... */
 				/* for left/center justification, AWGS treats a tab as a space */
 				if (just == JUST_CENTER || just == JUST_RIGHT)
-					c = ' ';
+					if (!flag_x) c = ' ';
 				para[pos] = c;
 				style[pos] = attr;
 				++pos;
