@@ -565,9 +565,6 @@ static unsigned one_line(unsigned start, unsigned end, int last) {
 				fstyle[fix] = attr;
 				++fix;
 			}
-
-			// for (unsigned i = 0; i < ws; ++i)
-				// fputc(' ', stdout);
 			x += ws;
 		}
 
@@ -593,7 +590,6 @@ static unsigned one_line(unsigned start, unsigned end, int last) {
 		if (l) {
 			memcpy(ftext + fix, para + start, l);
 			memcpy(fstyle + fix, style + start, l);
-			x += l;
 			fix += l;
 			x += l;
 		}
