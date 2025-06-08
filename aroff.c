@@ -519,12 +519,13 @@ static unsigned one_line(unsigned start, unsigned end, int last) {
 	 left/right/center/numeric tabs are supported but overly difficult to set.
 
 	 AppleWorks (classic)
-	 Full-justified text does the tab -> expanssion, then fully justifies the results.
+	 Full-justified text does the tab -> expansion, then fully justifies the results.
 	 Full justification only happens when printing.
 	 Tabs cause some text to get moved beyond the right margin when printing.
+	 Right tabs are off by one.
 
 	 AppleWorks stores the tab as well as tab padding characters in the file.
-	 (tab -> space handled in aw.c for compatiblity unless -x)
+	 (tab -> space handled in aw.c for compatibility unless -x)
 
 	 AppleWorks (GS)
 	 with center/right justification, AWGS gives up and treats the tab character as a space.
@@ -785,7 +786,7 @@ void usage(int ec) {
 		"aroff [-ch] [-t terminal] [-T output] file ...\n"
 		" -c            display format codes\n"
 		" -t terminal   set terminal type\n"
-		" -T output     set output type (termcap, ascii)\n"
+		" -T output     set output type (termcap, ascii, plain)\n"
 		" -h            help\n",
 		stdout);
 
@@ -825,8 +826,12 @@ int main(int argc, char **argv) {
 #endif
 
 
-	while ( (ch = getopt(argc, argv, "cT:t:x")) != -1) {
+	while ( (ch = getopt(argc, argv, "cT:t:xb")) != -1) {
 		switch(ch) {
+		case 'b':
+			/* historical aroff compatibility */
+			flag_t = FMT_PLAIN;
+			break;
 		case 'c':
 			flag_c = 1;
 			break;

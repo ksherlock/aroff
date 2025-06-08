@@ -88,7 +88,7 @@ static void process_tabs(unsigned char *buffer, unsigned length) {
 			++j;
 			break;
 		case '>':
-			/* need to +1 so AW handling matches our */
+			/* need to +1 so our handling matches AW */
 			tab_stops[j] = ii + 1;
 			tab_types[j] = TAB_RIGHT;
 			++j;
