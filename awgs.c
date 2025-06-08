@@ -11,9 +11,12 @@
 #include "aroff.h"
 
 
+#if 0
+/* these are the awgs values */
 #define TAB_LEFT 0
 #define TAB_RIGHT 1
 #define TAB_DECIMAL 0xffff
+#endif
 
 static unsigned attr = 0;
 
@@ -178,7 +181,7 @@ void process_para(unsigned char *ruler, unsigned char *pp) {
 		x = READ16(ruler, offset + o_tab_type);
 		tab_types[i] = TAB_LEFT;
 		if (x == 1) tab_types[i] = TAB_RIGHT;
-		if (x == -1) tab_types[i] = TAB_DECIMAL;
+		if (x == 0xffff) tab_types[i] = TAB_DECIMAL;
 	}
 
 	update_style(pp[o_ph_first_style]);
