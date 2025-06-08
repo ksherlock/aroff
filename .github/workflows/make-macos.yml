@@ -1,0 +1,15 @@
+name: MacOS Make
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: make
+      run: make
