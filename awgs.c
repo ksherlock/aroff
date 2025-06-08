@@ -261,7 +261,11 @@ void awgs_process(FILE *f) {
 	/* skip the header */
 	fseek(f, 668, SEEK_SET);
 
+	#ifdef __ORCAC__
+	fread(&numArrays, 2, 1, f);
+	#else
 	numArrays = fgetc(f) | (fgetc(f) << 8);
+	#endif
 
 	arrays = malloc(numArrays * o_sa_size);
 	if (!arrays) err(EX_OSERR, "malloc doc save array (%u entries)", numArrays);
@@ -297,7 +301,11 @@ void awgs_process(FILE *f) {
 		long size;
 		unsigned char *cp;
 
+		#ifdef __ORCAC__
+		fread(&size, 4, 1, f);
+		#else
 		size = fgetc(f) | (fgetc(f) << 8) | (fgetc(f) << 16) | fgetc(f) << 24;
+		#endif
 
 		cp = malloc(size);
 		if (!cp) err(EX_OSERR, "malloc text blocks %u (%lu)", i, size);

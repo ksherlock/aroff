@@ -10,6 +10,15 @@
 
 #include "aroff.h"
 
+#ifdef __STACK_CHECK__
+#include <gno/gno.h>
+
+static void
+print_stack (void) {
+    fprintf(stderr, "stack usage: %d bytes\n", _endStackCheck());
+}
+#endif
+
 
 enum {
 	FMT_TERMCAP,
@@ -808,6 +817,13 @@ int main(int argc, char **argv) {
 	flag_t = NULL;
 	flag_T = FMT_TERMCAP;
 	flag_x = 0;
+
+
+#ifdef __STACK_CHECK__
+    _beginStackCheck();
+    atexit(print_stack);
+#endif
+
 
 	while ( (ch = getopt(argc, argv, "cT:t:x")) != -1) {
 		switch(ch) {

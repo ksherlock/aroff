@@ -1,0 +1,31 @@
+CC = occ --gno
+CFLAGS = -O-1 -w-1 # -D__STACK_CHECK__
+LDLIBS += -ltermcap.204
+NOROOT = -r
+
+OBJS = orca/aroff.a orca/aw.a orca/awgs.a
+
+.PHONY: all
+all: orca/aroff
+	
+
+orca:
+	mkdir orca
+
+orca/aroff.a : CFLAGS += -s 1024
+orca/aroff.a : NOROOT =
+
+orca/aroff: $(OBJS)
+	$(CC) $^ $(LDLIBS) -o $@
+
+orca/aroff.a : aroff.c aroff.h
+orca/aw.a : aw.c aroff.h
+orca/awgs.a : awgs.c aroff.h
+
+orca/%.a : %.c | orca
+	$(CC) $< $(CFLAGS) $(NOROOT) -c -o $@
+
+
+.PHONY: clean
+clean:
+	$(RM) -rf orca
