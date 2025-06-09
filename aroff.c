@@ -830,7 +830,7 @@ int main(int argc, char **argv) {
 		switch(ch) {
 		case 'b':
 			/* historical aroff compatibility */
-			flag_t = FMT_PLAIN;
+			flag_T = FMT_PLAIN;
 			break;
 		case 'c':
 			flag_c = 1;
@@ -858,7 +858,8 @@ int main(int argc, char **argv) {
 
 	if (argc == 0) usage(EX_NOINPUT);
 
-	tc_init();
+	if (flag_T == FMT_TERMCAP)
+		tc_init();
 
 	for (i = 0; i < argc; ++i) {
 		FILE *f = fopen(argv[i], "rb");

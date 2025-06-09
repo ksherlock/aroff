@@ -7,10 +7,18 @@ OBJS = orca/aroff.a orca/aw.a orca/awgs.a
 
 .PHONY: all
 all: orca/aroff
-	
+
+.PHONY: dist
+dist: orca/aroff orca/aroff.1
+	cd orca && iix tar cfv aroff.shk aroff aroff.1
 
 orca:
 	mkdir orca
+
+
+orca/aroff.1 : aroff.1 | orca
+	mandoc -I os=GNO -Tman $^ > $@
+	iix chtyp -t txt $@
 
 orca/aroff.a : CFLAGS += -s 1024
 orca/aroff.a : NOROOT =
